@@ -3,15 +3,16 @@ import moment from "moment";
 
 import styled from "styled-components";
 
+import { useSelector, useDispatch } from "react-redux";
+import { changeToday } from "../redux/modules/todo";
+
 const Calendar = (props) => {
-  const {
-    today,
-    _changeMonth,
-    todo_list,
-    _setSeletedTodo,
-    selected_todo,
-    _setIsOpen,
-  } = props;
+  const dispatch = useDispatch();
+
+  const today = useSelector((state) => state.todo.today);
+  const todo_list = useSelector((state) => state.todo.todo_list);
+
+  const { _setSeletedTodo, _setIsOpen } = props;
   // console.log(moment(today));
   // 이번달의 시작 주, 끝 주를 구합니다.
   const start_week = moment(today).startOf("month").week();
@@ -60,7 +61,7 @@ const Calendar = (props) => {
                 key={`${_l.datetime}_${_l.todo_id}`}
                 onClick={() => {
                   _setSeletedTodo(_l);
-                  console.log("렌더링된당");
+                  //console.log("렌더링된당");
                   _setIsOpen(true);
                 }}
                 bg={_l.completed ? "yellow" : "#ffffff"}
@@ -100,10 +101,7 @@ const Calendar = (props) => {
       <Grid4>
         <button
           onClick={() => {
-            // 자식 컴포넌트에서 부모 컴포넌트의 state를 조절하는 건 좋은 방법은 아닙니다.
-            // 하지만 아직 뷰만들기 단계니까 맘껏 조절해볼게요 :)
-            // 이런걸 양방향 바인딩이라고 불러요 (소근 /// 양방향 바인딩.. 찾아보실거죠? 믿씁니다!)
-            _changeMonth(moment(today).clone().subtract(1, "month"));
+            dispatch(changeToday(moment(today).clone().subtract(1, "month")));
           }}
         >
           이전
@@ -111,7 +109,7 @@ const Calendar = (props) => {
         {moment(today).format("YY년 MM월")}
         <button
           onClick={() => {
-            _changeMonth(moment(today).clone().add(1, "month"));
+            dispatch(changeToday(moment(today).clone().add(1, "month")));
           }}
         >
           이후

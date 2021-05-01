@@ -1,5 +1,9 @@
 import moment from "moment";
+import { firestore } from "../../shared/firebase";
 
+// 저는 콜렉션이름을 todo로 만들었어요! :)
+// todoDB를 정해줍니다!
+const todoDB = firestore.collection("todo");
 // 1. 액션 타입 정하기
 //  - 우리한테 필요한 액션이 뭐뭐 있을까요?
 //  - 어딘가에서 값을 가져다가 넣는 거(나중에 파이어스토어에서 가져오겠죠!),
@@ -42,48 +46,123 @@ export const changeToday = (date) => {
  */
 const initialState = {
   today: moment(),
-  todo_list: {
-    "2021-03-01": [
-      {
-        todo_id: 11,
-        datetime: "2021-03-01 10:10:00",
-        contents: "산책가기1",
-        completed: false,
-      },
-      {
-        todo_id: 155555,
-        datetime: "2021-03-01 10:15:00",
-        contents: "산책가기2",
-        completed: true,
-      },
-    ],
-    "2021-03-21": [
-      {
-        todo_id: 8,
-        datetime: "2021-03-21 10:00:00",
-        contents: "산책가기3",
-        completed: false,
-      },
-      {
-        todo_id: 4,
-        datetime: "2021-03-21 10:10:00",
-        contents: "산책가기4",
-        completed: false,
-      },
-    ],
-  },
+  todo_list: {},
 };
 
 // +) 5. 파이어스토어 연결하기! 미들웨어 thunk를 쓸거예요!
-//     - 데이터를 받아오고, 수정도 하고 생성도 하고..! 화이팅!
+export const getTodoFB = () => {
+  return function (dispatch) {
+    // 파이어스토어에서 데이터를 가져와요!
+    // 앗 주의할 게 있어요!
+    // 우리 파이어스토어에는 데이터가 {[날짜]: [{todo 데이터}, ...],} 형식으로 저장되지 않을거예요!
+    // 버킷리스트와 똑같은 형태로 저장될겁니다!
+    // 즉, 전부 가져온 후엔 데이터형식을 맞춰줘야하는 거죠!
+    todoDB
+      .get()
+      .then((docs) => {
+        // 일단 싹 가져와서 배열로 만들어둘게요. :)
+        let _todo_list_fb = [];
+        docs.forEach((doc) => {
+          // 데이터를 배열에 넣어요!
+          console.log(doc.data(), "doc data");
+          _todo_list_fb.push({ ...doc.data(), todo_id: doc.id });
+        });
+
+        // 이제 형식을 변환해줍니다! reduce를 쓸거예요 :)
+        // 리듀스의 사용법은 구글에 검색해보기!
+        const todo_list = _todo_list_fb.reduce((acc, cur) => {
+          // 현재 값의 날짜 년-월-일
+          let _date = moment(cur.datetime).format("YYYY-MM-DD");
+          // 만약 누산된 딕셔너리에 현재 값의 datetime과 같은 날짜의 키가 있다면?
+          if (Object.keys(acc).indexOf(_date) !== -1) {
+            return { ...acc, [_date]: [...acc[_date], cur] };
+          } else {
+            return { ...acc, [_date]: [cur] };
+          }
+        }, {});
+
+        // 데이터를 확인해보세요! :)
+        console.log(todo_list);
+
+        // 액션을 일으켜보자!
+        dispatch(loadTodo(todo_list));
+      })
+      .catch((err) => {
+        // 에러메시지를 콘솔에 띄워봅시다 :)
+        console.log(err);
+      });
+  };
+};
+
+// 파이어스토어에 데이터 추가하기
+export const addTodoFB = (date, todo_data) => {
+  return function (dispatch) {
+    // 파이어스토어에 추가해요!
+    todoDB
+      .add({ ...todo_data })
+      .then((doc) => {
+        // 이제는 제대로 된 아이디를 넣어줄 수 있네요!
+
+        console.log(date, { ...todo_data, todo_id: doc.id });
+        dispatch(addTodo(date, { ...todo_data, todo_id: doc.id }));
+      })
+      .catch((err) => {
+        // 에러메시지를 콘솔에 띄워봅시다 :)
+        console.log(err);
+      });
+  };
+};
+
+// 파이어스토어 데이터 수정하기
+export const updateTodoFB = (date, todo_id, todo_data) => {
+  return function (dispatch) {
+    let _todo_data = todo_data;
+    // todo_id 속성을 지워요! :) 파이어베이스엔 안넣을거거든요!
+    delete _todo_data.todo_id;
+
+    // 파이어스토어의 데이터를 수정해요!
+    todoDB
+      .doc(todo_id)
+      .update({ ..._todo_data })
+      .then((doc) => {
+        //   성공했다면 리덕스도 업데이트!
+        dispatch(updateTodo(date, todo_id, todo_data));
+      })
+      .catch((err) => {
+        // 에러메시지를 콘솔에 띄워봅시다 :)
+        console.log(err);
+      });
+  };
+};
+
+// 파이어스토어 데이터 삭제하기
+export const deleteTodoFB = (date, todo_id) => {
+  return function (dispatch) {
+    // 파이어스토어에서 데이터를 삭제해요!
+    todoDB
+      .doc(todo_id)
+      .delete()
+      .then((res) => {
+        // 성공했다면 리덕스도 업데이트!
+        dispatch(deleteTodo(date, todo_id));
+      })
+      .catch((err) => {
+        // 에러메시지를 콘솔에 띄워봅시다 :)
+        console.log(err);
+      });
+  };
+};
 
 // 4. 리듀서 만들기
 //  - 이제 액션 별로 해야할 것(수정하고, 생성하고, ...)을 합시다!
 export default function reducer(state = initialState, action = {}) {
   switch (action.type) {
     // 액션 별로 처리할 내용 넣기!
+
+    // 액션으로 받아오는 것 : todo_list
+    // todo_list : 일정 딕셔너리
     case "todo/LOAD":
-      return state;
+      return { ...state, todo_list: { ...action.todo_list } };
 
     case "todo/ADD": {
       // 액션으로 받아오는 것 : date, todo_data

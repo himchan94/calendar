@@ -3,24 +3,13 @@ import styled from "styled-components";
 
 import moment from "moment";
 
-// const _todo_list = {
-//   "2021-04-17": [
-//     {
-//       todo_id: 11,
-//       datetime: "2021-04-17 10:10:00",
-//       contents: "산책가기1",
-//       completed: false,
-//     },
-//     {
-//       todo_id: 155555,
-//       datetime: "2021-04-17 10:15:00",
-//       contents: "산책가기2",
-//       completed: false,
-//     },
-//   ],
+import { useSelector, useDispatch } from "react-redux";
+import { updateTodoFB, deleteTodoFB } from "../redux/modules/todo";
 
 const Popup = (props) => {
-  const { _setIsOpen, selected_todo, _updateTodo, _deleteTodo } = props;
+  const dispatch = useDispatch();
+
+  const { _setIsOpen, selected_todo } = props;
   const contents = React.useRef(null);
   const datetime = React.useRef(null);
   return (
@@ -46,9 +35,11 @@ const Popup = (props) => {
         <Grid2>
           <button
             onClick={() => {
-              _deleteTodo(
-                moment(selected_todo.datetime).format("YYYY-MM-DD"),
-                selected_todo.todo_id
+              dispatch(
+                deleteTodoFB(
+                  moment(selected_todo.datetime).format("YYYY-MM-DD"),
+                  selected_todo.todo_id
+                )
               );
               _setIsOpen(false);
             }}
@@ -74,11 +65,12 @@ const Popup = (props) => {
                 contents: _contents,
                 datetime: _datetime,
               };
-
-              _updateTodo(
-                moment(selected_todo.datetime).format("YYYY-MM-DD"),
-                selected_todo.todo_id,
-                update_data
+              dispatch(
+                updateTodoFB(
+                  moment(selected_todo.datetime).format("YYYY-MM-DD"),
+                  selected_todo.todo_id,
+                  update_data
+                )
               );
               _setIsOpen(false);
             }}
@@ -95,10 +87,12 @@ const Popup = (props) => {
                 update_data = { ...selected_todo, completed: true };
               }
 
-              _updateTodo(
-                moment(selected_todo.datetime).format("YYYY-MM-DD"),
-                selected_todo.todo_id,
-                update_data
+              dispatch(
+                updateTodoFB(
+                  moment(selected_todo.datetime).format("YYYY-MM-DD"),
+                  selected_todo.todo_id,
+                  update_data
+                )
               );
               _setIsOpen(false);
             }}

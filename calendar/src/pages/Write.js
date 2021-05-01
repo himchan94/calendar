@@ -2,37 +2,22 @@ import React from "react";
 import styled from "styled-components";
 import moment from "moment";
 
-//  const todo_list = {
-//    "2021-04-17": [
-//      {
-//        todo_id: 11,
-//        datetime: "2021-04-17 10:10:00",
-//        contents: "산책가기1",
-//        completed: false,
-//      },
-//    ],
-//  };
-//데이터 양식에 맞춰서 값 입력해보기
+import { useSelector, useDispatch } from "react-redux";
+import { addTodoFB } from "../redux/modules/todo";
 
 const Write = (props) => {
   const contents = React.useRef(null);
   const datetime = React.useRef(null);
-
+  const dispatch = useDispatch();
   const writeTodo = () => {
-    // 콘솔로 내가 선택한 데이터가 잘 왔나 확인해볼까요? :)
-    // console.log(contents.current.value);
-    // console.log(datetime.current.value);
-
     let _new_todo = {
-      todo_id: "dummy_id1111", // 아이디는 나중에 디비에 저장되면, 그때 가져와야죠! 일단 가짜로 둡니다!
-      datetime: moment(datetime.current.value).format("YYYY-MM-DD hh:mm:ss"), // 우리 데이터 형식대로 맞춰줍니다.
+      datetime: moment(datetime.current.value).format("YYYY-MM-DD hh:mm:ss"),
       contents: contents.current.value,
-      completed: false, // 지금 만들었으니 당연히 false겠죠!
+      completed: false,
     };
 
-    console.log(_new_todo);
+    dispatch(addTodoFB(_new_todo.datetime, _new_todo));
 
-    // 추가로 하나만 더! 일정을 추가했으면 원래 페이지로 돌아가야죠! replace 사용해봅시다!
     props.history.replace("/");
   };
 
