@@ -4,8 +4,15 @@ import moment from "moment";
 import styled from "styled-components";
 
 const Calendar = (props) => {
-  const { today, _changeMonth, todo_list } = props;
-  console.log(moment(today));
+  const {
+    today,
+    _changeMonth,
+    todo_list,
+    _setSeletedTodo,
+    selected_todo,
+    _setIsOpen,
+  } = props;
+  // console.log(moment(today));
   // 이번달의 시작 주, 끝 주를 구합니다.
   const start_week = moment(today).startOf("month").week();
   const end_week = moment(today).endOf("month").week();
@@ -39,10 +46,27 @@ const Calendar = (props) => {
 
           const list = _list.map((_l, idx) => {
             // 데이터 확인하기!
-            // console.log(_l);
+            //console.log("l의 모양은", _l);
             // 일정을 뿌려줘요!
+            //false and   완료일때 true -> false,  미완료일때 false -> true
+            //일때 전체일정, true일때 완료된 일정만
+            // true   ->
+
+            if (props.show_completed && !_l.completed) {
+              return null;
+            }
             return (
-              <div key={`${_l.datetime}_${_l.todo_id}`}>{_l.contents}</div>
+              <Schedule
+                key={`${_l.datetime}_${_l.todo_id}`}
+                onClick={() => {
+                  _setSeletedTodo(_l);
+                  console.log("렌더링된당");
+                  _setIsOpen(true);
+                }}
+                bg={_l.completed ? "yellow" : "#ffffff"}
+              >
+                {_l.contents}
+              </Schedule>
             );
           });
 
@@ -95,7 +119,6 @@ const Calendar = (props) => {
       </Grid4>
       <Grid>{dow}</Grid>
       {week_arr}
-      이전달-버튼 이번달-텍스트 다음달-버튼
     </React.Fragment>
   );
 };
@@ -109,19 +132,19 @@ const Grid = styled.div`
 
 const Grid2 = styled.div`
   display: flex;
-  width: 15vh;
-  height: 15vh;
+  width: 15vw;
+  min-height: 10vh;
+  height: auto;
   ${(props) => (props.bg ? `background-color: ${props.bg};` : "")}
   fontsize: 10px;
-  justify-content: center;
   flex-direction: column;
   text-align: center;
   border: 4px dashed #bcbcbc;
 `;
 const Grid3 = styled.div`
   display: flex;
-  width: 15vh;
-  height: 15vh;
+  width: 15vw;
+  height: auto;
   background-color: #ffffff;
   fontsize: 10px;
   justify-content: center;
@@ -136,6 +159,10 @@ const Grid4 = styled.div`
   display: flex;
   justify-content: space-around;
   font-size: 30px;
+`;
+
+const Schedule = styled.div`
+  ${(props) => (props.bg ? `background-color: ${props.bg};` : "")}
 `;
 
 export default Calendar;

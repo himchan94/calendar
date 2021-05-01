@@ -5,10 +5,17 @@ import App from "./shared/App";
 import reportWebVitals from "./reportWebVitals";
 import { BrowserRouter } from "react-router-dom";
 
+// 리덕스를 주입할 Provider를 가져온다
+import { Provider } from "react-redux";
+
+import store from "./redux/configureStore";
+
 ReactDOM.render(
-  <BrowserRouter>
-    <App />
-  </BrowserRouter>,
+  <Provider store={store}>
+    <BrowserRouter>
+      <App />
+    </BrowserRouter>
+  </Provider>,
   document.getElementById("root")
 );
 
