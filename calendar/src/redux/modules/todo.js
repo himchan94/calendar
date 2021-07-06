@@ -1,23 +1,17 @@
 import moment from "moment";
 import { firestore } from "../../shared/firebase";
 
-// 저는 콜렉션이름을 todo로 만들었어요! :)
-// todoDB를 정해줍니다!
+// 파이어스토어 연결
 const todoDB = firestore.collection("todo");
-// 1. 액션 타입 정하기
-//  - 우리한테 필요한 액션이 뭐뭐 있을까요?
-//  - 어딘가에서 값을 가져다가 넣는 거(나중에 파이어스토어에서 가져오겠죠!),
-//    일정 만들기, 수정하기(완료도 수정에 포함인거 아시죠!), 삭제하기,
-//    앗! 이전, 다음 달을 움직이기 위해서 기준일을 바꿔주는 것도 있어야겠네요!
+
+// 액션 타입 생성
 const LOAD = "todo/LOAD";
 const ADD = "todo/ADD";
 const UPDATE = "todo/UPDATE";
 const DELETE = "todo/DELETE";
 const CHANGE_TODAY = "todo/CHANGE_TODAY";
 
-// 2. 액션 생성자 만들기
-//  - 액션을 반환할 액션 생성자를 만들어줘요.
-//  - 액션을 하기 위해(뭔가 바꾸기 위해) 필요한 데이터가 뭔지 잘 생각해서 파라미터를 받아옵시다! :)
+// 액션 생성자 생성
 export const loadTodo = (todo_list) => {
   return { type: LOAD, todo_list };
 };
@@ -38,29 +32,19 @@ export const changeToday = (date) => {
   return { type: CHANGE_TODAY, date };
 };
 
-// 3. 기본 값 정해주기
-// 여기에 기본 값을 넣어줘요!
-/**
- * todo_list : 일정 목록
- * today : 기준일자(달력 월을 결정할 때 쓸거예요. today말고... base_date로 하고 싶은데... 다른 예제에서 제가 today로 했더라구요..8ㅛ8... 이르케 이름 짓기가 중요합니다... 맘대로 바꾸기가 쉽지가 않아요...)
- */
+// 초기 값
 const initialState = {
   today: moment(),
   todo_list: {},
 };
 
-// +) 5. 파이어스토어 연결하기! 미들웨어 thunk를 쓸거예요!
+// 미들웨어 + 파이어 스토어 연동해서 파이어 스토어의 데이터를 가져오는 함수
 export const getTodoFB = () => {
   return function (dispatch) {
-    // 파이어스토어에서 데이터를 가져와요!
-    // 앗 주의할 게 있어요!
-    // 우리 파이어스토어에는 데이터가 {[날짜]: [{todo 데이터}, ...],} 형식으로 저장되지 않을거예요!
-    // 버킷리스트와 똑같은 형태로 저장될겁니다!
-    // 즉, 전부 가져온 후엔 데이터형식을 맞춰줘야하는 거죠!
+
     todoDB
       .get()
       .then((docs) => {
-        // 일단 싹 가져와서 배열로 만들어둘게요. :)
         let _todo_list_fb = [];
         docs.forEach((doc) => {
           // 데이터를 배열에 넣어요!
@@ -68,8 +52,7 @@ export const getTodoFB = () => {
           _todo_list_fb.push({ ...doc.data(), todo_id: doc.id });
         });
 
-        // 이제 형식을 변환해줍니다! reduce를 쓸거예요 :)
-        // 리듀스의 사용법은 구글에 검색해보기!
+        // 파이어스토어에서 받아온 데이터 형식을 intialState의 형식에 맞게 맞춰춘다.
         const todo_list = _todo_list_fb.reduce((acc, cur) => {
           // 현재 값의 날짜 년-월-일
           let _date = moment(cur.datetime).format("YYYY-MM-DD");
@@ -81,33 +64,30 @@ export const getTodoFB = () => {
           }
         }, {});
 
-        // 데이터를 확인해보세요! :)
         console.log(todo_list);
 
-        // 액션을 일으켜보자!
+        // 액션발생
         dispatch(loadTodo(todo_list));
       })
       .catch((err) => {
-        // 에러메시지를 콘솔에 띄워봅시다 :)
+      // 에러 발생 시 에러 메세지
         console.log(err);
       });
   };
 };
 
-// 파이어스토어에 데이터 추가하기
+// 파이어스토어에 데이터 추가하는 함수
 export const addTodoFB = (date, todo_data) => {
   return function (dispatch) {
-    // 파이어스토어에 추가해요!
     todoDB
       .add({ ...todo_data })
       .then((doc) => {
-        // 이제는 제대로 된 아이디를 넣어줄 수 있네요!
 
         console.log(date, { ...todo_data, todo_id: doc.id });
         dispatch(addTodo(date, { ...todo_data, todo_id: doc.id }));
       })
       .catch((err) => {
-        // 에러메시지를 콘솔에 띄워봅시다 :)
+        // 에러메시지
         console.log(err);
       });
   };
@@ -117,19 +97,18 @@ export const addTodoFB = (date, todo_data) => {
 export const updateTodoFB = (date, todo_id, todo_data) => {
   return function (dispatch) {
     let _todo_data = todo_data;
-    // todo_id 속성을 지워요! :) 파이어베이스엔 안넣을거거든요!
     delete _todo_data.todo_id;
 
-    // 파이어스토어의 데이터를 수정해요!
+    // Firestore에 동일 id를 찾아 데이터를 수정한다.
     todoDB
       .doc(todo_id)
       .update({ ..._todo_data })
       .then((doc) => {
-        //   성공했다면 리덕스도 업데이트!
+        //   성공했다면 리덕스도 업데이트
         dispatch(updateTodo(date, todo_id, todo_data));
       })
       .catch((err) => {
-        // 에러메시지를 콘솔에 띄워봅시다 :)
+        // 에러메시지 출력
         console.log(err);
       });
   };
@@ -138,12 +117,12 @@ export const updateTodoFB = (date, todo_id, todo_data) => {
 // 파이어스토어 데이터 삭제하기
 export const deleteTodoFB = (date, todo_id) => {
   return function (dispatch) {
-    // 파이어스토어에서 데이터를 삭제해요!
+    // 해당 아이디를 찾아 파이어스토어에서 데이터를 삭제한다.
     todoDB
       .doc(todo_id)
       .delete()
       .then((res) => {
-        // 성공했다면 리덕스도 업데이트!
+        // 성공했다면 리덕스도 데이터 삭제
         dispatch(deleteTodo(date, todo_id));
       })
       .catch((err) => {
@@ -153,11 +132,9 @@ export const deleteTodoFB = (date, todo_id) => {
   };
 };
 
-// 4. 리듀서 만들기
-//  - 이제 액션 별로 해야할 것(수정하고, 생성하고, ...)을 합시다!
+// 4. 생성
 export default function reducer(state = initialState, action = {}) {
   switch (action.type) {
-    // 액션 별로 처리할 내용 넣기!
 
     // 액션으로 받아오는 것 : todo_list
     // todo_list : 일정 딕셔너리
@@ -168,42 +145,38 @@ export default function reducer(state = initialState, action = {}) {
       // 액션으로 받아오는 것 : date, todo_data
       const todo_list = { ...state.todo_list };
       // 데이터 넣는 부분!
-      // 1. 데이터 맹근다!
+      // 1. 생성
       const new_todo_date = moment(action.date).format("YYYY-MM-DD");
       const new_todo_data = {
         ...action.todo_data,
-        todo_id: new Date().getTime(), // 임시 아이디! (파이어베이스에 넣기 전까지 써요!)
+        todo_id: new Date().getTime(), // 임시 아이디
       }; // 새 일정 데이터
 
       // 2. 원본 데이터랑 합친다!
-      let new_todo_list = {}; // 여기에 원본 데이터 + 추가할 일정을 넣을 겁니다!
+      let new_todo_list = {}; // 원본 데이터 + 추가할 일정
 
-      // Object.keys(todo_list) : todo_list에서 키값만 가져다 배열을 만들거야
-      // Object.keys(todo_list).indexOf(new_todo_data) 근데, todo_list 키값 배열에 가짜 데이터 넣을 날짜로 된 키가 있나?
+      // Object.keys(todo_list) : todo_list에서 키값만 가져다 배열을 만드는 내장함수 mdn 참고
+      // Object.keys(todo_list).indexOf(new_todo_data) 근데, todo_list 키값 배열에 가짜 데이터 넣을 날짜로 된 키가 있는지 확인.
       //   ㄴ있으면 어디있나 인덱스가 나오고, 없으면? -1이 나옵니다.
       // Object.keys(todo_list).indexOf(new_todo_data) !== -1 : todo_list 키값 배열에 가짜 데이터 넣을 날짜 키가 있으면 true, 없으면 false
       if (Object.keys(todo_list).indexOf(new_todo_date) !== -1) {
-        //   있으면, 원래 있던 배열이랑 합쳐주자!
+        //   있으면, 원래 있던 배열이랑 합친다.
         new_todo_list = {
           ...todo_list,
           [new_todo_date]: [...todo_list[new_todo_date], new_todo_data],
         };
       } else {
-        // 없으면 그냥 넣어주자!
+        // 없으면 그냥 넣는다.
         new_todo_list = { ...todo_list, [new_todo_date]: [new_todo_data] };
       }
 
       //   console.log(new_todo_list);
-      // 3. 합친 걸 넣자!
+      // 3. 합친 걸 넣는다.
       return { ...state, todo_list: new_todo_list };
     }
     // 액션으로 받아오는 것 : date, todo_id, todo_data
     /**
-     *
-     * @param {*} date 일정이 있는 날짜 / 형식은 꼭 YYYY-MM-DD여야겠죠! (string이여야해요!)
-     * @param {*} todo_id 일정의 id
-     * @param {*} todo_data 고칠 내용! 딕셔너리({})로 받아옵니다. (text, completed, date가 고칠 수 있는 정보겠네요!)
-     */
+
     case "todo/UPDATE": {
       const { date, todo_id, todo_data } = action;
       // date와 todo_id를 이용해서 삭제할 일정 찾아서 삭제하기
@@ -215,33 +188,27 @@ export default function reducer(state = initialState, action = {}) {
 
       // 새 전체 일정이 여기 들어갈거예요.
       let new_todo_list = {};
-      // 만약 날짜가 달라졌다면? 해당 날짜에서 빼줘야해요! 그리고 새로운 날짜에 넣어줘야합니다. :)
-      // 아래 주석을 풀고 콘솔로 날짜가 같은 지, 다른 지 보세요!
+     //날짜가 달라졌을 때
       // console.log(date === moment(todo_data.datetime).format("YYYY-MM-DD"));
       if (date === moment(todo_data.datetime).format("YYYY-MM-DD")) {
-        // 날짜가 그대로라면?
+        // 날짜가 그대로일 때
         // 해당 일자 데이터에서 지울 일정을 고쳐줍니다.
         todos = todos.map((t) => {
-          // 지울 일정의 todo_id와 todos 안에 있던 값의 todo_id를 비교해요.
-          // 만약 두 개가 같으면 고칠 데이터겠죠! 그럼 이 친구를 새로 받아온 데이터로 덮어씌워야겠다!
-          // 두 개가 다르면? 그대로 return해준다!
+          // 지울 일정의 todo_id와 todos 안에 있던 값의 todo_id를 비교
+          // 만약 두 개가 같으면 새로 받아온 데이터로 덮어씀
+          // 두 개가 다르면? 그대로 return해준다.
           if (t.todo_id === todo_id) {
-            //   기존 내용에 고칠 내용을 덮어씌워요 :)
+            //   기존 내용에 고칠 내용을 덮어씌운다.
             return { ...t, ...todo_data };
           } else {
             return t;
           }
         });
 
-        // 이제 새로운 일정 데이터(전체!)를 만들어줄게요.
+        // 이제 새로운 일정 데이터 생성
         new_todo_list = { ..._new_todo_list, [date]: todos };
       } else {
-        // 날짜가 변했다면?
-        // 원래 일자에서 빼주고, 바뀐 일자엔 넣어주고!
-        //   이번엔 좀 한 번에 써볼게요 :) (상세하게 보고 싶으면 삭제 코드, 추가 코드 참고하기!)
-        // 새 일자를 상수에 넣어주고,
         const _new_date = moment(todo_data.datetime).format("YYYY-MM-DD");
-        // 해당 일자에 일정이 있었나 확인해요! 있었다면, 원래 배열을 유지하고, 없었다면 빈 배열로!
         const _new_date_todos = _new_todo_list[_new_date]
           ? _new_todo_list[_new_date]
           : [];
@@ -255,37 +222,33 @@ export default function reducer(state = initialState, action = {}) {
       // 확인해보자!
       // console.log(new_todo_list);
 
-      // 새 일정을 state에 넣으면 끝!
+      // 새 일정을 state에 넣어준다.
       return { ...state, todo_list: new_todo_list };
     }
 
     // 액션으로 받아오는 것 : date, todo_id
-    /**
-     *
-     * @param {*} date 일정이 있는 날짜 / 형식은 꼭 YYYY-MM-DD여야겠죠! (string이여야해요!)
-     * @param {*} todo_id 지울 일정의 아이디!
-     */
+
     case "todo/DELETE": {
       const { date, todo_id } = action;
       // date와 todo_id를 이용해서 삭제할 일정 찾아서 삭제하기
-      // 하나 복사합시다!
+
       const _new_todo_list = { ...state.todo_list };
 
-      // 지울 일정이 있는 날짜! 그 날짜에 어떤 일정이 있나 가져옵니다.
+      // 지울 일정이 있는 날짜
       let todos = _new_todo_list[date];
 
       // 해당 일자 데이터에서 지울 일정을 빼줍니다. (지울거 빼고 나머지만 가져오기)
       todos = todos.filter((t) => {
-        // 지울 일정의 todo_id와 todos 안에 있던 값의 todo_id를 비교해요.
-        // 만약 두 개가 같으면 지워야하는 것이니, 걸러줘야겠죠!
-        // 두 개가 다르면? 그대로 todos에 남아 있어도 되고요.
+        // 지울 일정의 todo_id와 todos 안에 있던 값의 todo_id를 비교
+        // 만약 두 개가 같으면 지워야하는 것
+        // 두 개가 다르면? 그대로 todos에 남아야 한다.
         return t.todo_id !== todo_id;
       });
 
-      // 이제 새로운 일정 데이터(전체!)를 만들어줄게요.
+      // 이제 새로운 일정 데이터 생성
       const new_todo_list = { ..._new_todo_list, [date]: todos };
 
-      // 새 일정을 state에 넣으면 끝!
+      // 새 일정을 state에 넣어준다.
       return { ...state, todo_list: new_todo_list };
     }
     case "todo/CHANGE_TODAY": {
